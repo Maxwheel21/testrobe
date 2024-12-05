@@ -1,18 +1,25 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
+import csv
+import matplotlib.pyplot as plt
 
-# Define the Dataset class
+# Dataset class without pandas
 class TimeSeriesDataset(Dataset):
-    '''Custom Dataset for the bivariate time-series regression task.'''
+    '''Custom Dataset for bivariate time-series regression (without pandas).'''
     def __init__(self, csv_file):
-        self.data = pd.read_csv(csv_file)  # Read the CSV
-        self.times = self.data['time'].values  # Extract time column
-        self.x = self.data['x'].values  # Extract x column
-        self.y = self.data['y'].values  # Extract y column
+        self.times = []
+        self.x = []
+        self.y = []
+
+        with open(csv_file, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)  # Skip the header
+            for row in reader:
+                self.times.append(float(row[0]))
+                self.x.append(float(row[1]))
+                self.y.append(float(row[2]))
 
     def __len__(self):
         return len(self.times)
@@ -83,12 +90,12 @@ print('Finished Training')
 
 # Visualization
 def visualize_predictions_2_1(model, dataset):
-    times = dataset.times
+    times = torch.tensor(dataset.times, dtype=torch.float32)
     ground_truth = torch.tensor(list(zip(dataset.x, dataset.y)), dtype=torch.float32)
     model.eval()  # Set the model to evaluation mode
 
     with torch.no_grad():
-        predicted = model(torch.tensor(times, dtype=torch.float32))
+        predicted = model(times)
 
     plt.figure(figsize=(10, 5))
     plt.subplot(1, 2, 1)
