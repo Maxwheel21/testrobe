@@ -16,13 +16,14 @@ x_test = np.linspace(20, 40, 100)  # punti da 20 a 40
 y_test = non_linear_function(x_test)
 
 # Normalizzazione degli input
-x_train = (x_train - np.min(x_train)) / (np.max(x_train) - np.min(x_train))
-x_test = (x_test - np.min(x_test)) / (np.max(x_test) - np.min(x_test))
+x_min, x_max = 0, 40  # Normalizziamo usando l'intero range 0-40
+x_train_norm = (x_train - x_min) / (x_max - x_min)
+x_test_norm = (x_test - x_min) / (x_max - x_min)
 
 # Convertire in tensori PyTorch
-x_train_tensor = torch.tensor(x_train, dtype=torch.float32).unsqueeze(1)
+x_train_tensor = torch.tensor(x_train_norm, dtype=torch.float32).unsqueeze(1)
 y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)
-x_test_tensor = torch.tensor(x_test, dtype=torch.float32).unsqueeze(1)
+x_test_tensor = torch.tensor(x_test_norm, dtype=torch.float32).unsqueeze(1)
 y_test_tensor = torch.tensor(y_test, dtype=torch.float32).unsqueeze(1)
 
 # Modello di rete neurale aggiornato
@@ -50,7 +51,7 @@ epochs = 1000
 for epoch in range(epochs):
     model.train()
     optimizer.zero_grad()
-    y_pred = model(x_train_tensor)
+    y_pred = model(x_train_tensor)  # Solo i dati di addestramento
     loss = criterion(y_pred, y_train_tensor)
     loss.backward()
     optimizer.step()
@@ -58,7 +59,7 @@ for epoch in range(epochs):
     if (epoch + 1) % 100 == 0:
         print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item():.4f}")
 
-# Test del modello
+# Test del modello: predizione sui dati da 20 a 40
 model.eval()
 with torch.no_grad():
     y_test_pred = model(x_test_tensor)
@@ -71,5 +72,5 @@ plt.plot(x_test, y_test_pred.numpy(), label="Test Data (Prediction)", color="red
 plt.legend()
 plt.xlabel("x")
 plt.ylabel("y")
-plt.title("Non-linear Function Prediction with Enhanced PyTorch Model")
+plt.title("Prediction on Unseen Data (20 to 40) After Training on 0 to 20")
 plt.show()
