@@ -40,7 +40,7 @@ print('Finished Training')
 # Visualization
 def visualize_predictions_2_2(model, dataset, t_range=(0, 100)):
     times = torch.linspace(*t_range, steps=100)
-    ground_truth_times = dataset.times
+    ground_truth_times = torch.tensor(dataset.times, dtype=torch.float32)
     ground_truth_values = torch.tensor(list(zip(dataset.x, dataset.y)), dtype=torch.float32)
 
     model.eval()
