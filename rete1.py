@@ -1,64 +1,80 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Generazione dei dati (range esteso)
-np.random.seed(42)
-torch.manual_seed(42)
+# Definiamo una funzione non lineare (ad esempio, il seno)
+def non_linear_function(x):
+    return np.sin(x)
 
-x_train = np.linspace(-15, 15, 1500).reshape(-1, 1)
-y_train = np.sin(x_train) + 0.1 * np.random.normal(0, 1, size=x_train.shape)
+# Creiamo i dati di addestramento
+x_train = np.linspace(0, 20, 100)  # punti da 0 a 20
+y_train = non_linear_function(x_train)
 
-x_tensor = torch.tensor(x_train, dtype=torch.float32)
-y_tensor = torch.tensor(y_train, dtype=torch.float32)
+# Creiamo i dati di test
+x_test = np.linspace(20, 40, 100)  # punti da 20 a 40
+y_test = non_linear_function(x_test)
 
-# Modello con regolarizzazione
-class RegularizedNN(nn.Module):
+# Convertiamo i dati in tensori PyTorch
+x_train_tensor = torch.tensor(x_train, dtype=torch.float32).unsqueeze(1)
+y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)
+x_test_tensor = torch.tensor(x_test, dtype=torch.float32).unsqueeze(1)
+y_test_tensor = torch.tensor(y_test, dtype=torch.float32).unsqueeze(1)
+
+# Definiamo un semplice modello di rete neurale
+class SimpleNN(nn.Module):
     def __init__(self):
-        super(RegularizedNN, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(1, 50),
-            nn.ReLU(),
-            nn.Dropout(0.2),  # Aggiunta di Dropout
-            nn.Linear(50, 50),
-            nn.ReLU(),
-            nn.Dropout(0.2),  # Aggiunta di Dropout
-            nn.Linear(50, 1)
-        )
+        super(SimpleNN, self).__init__()
+        self.fc1 = nn.Linear(1, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 1)
+        self.relu = nn.ReLU()
     
     def forward(self, x):
-        return self.fc(x)
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
-# Modello, loss, ottimizzatore
-model = RegularizedNN()
+# Inizializziamo il modello, la funzione di perdita e l'ottimizzatore
+model = SimpleNN()
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-# Training
-epochs = 1000
-losses = []
+# Addestramento del modello
+epochs = 500
 for epoch in range(epochs):
+    # Azzeriamo i gradienti
     optimizer.zero_grad()
-    y_pred = model(x_tensor)
-    loss = criterion(y_pred, y_tensor)
-    losses.append(loss.item())
+    
+    # Forward pass
+    y_pred = model(x_train_tensor)
+    
+    # Calcoliamo la perdita
+    loss = criterion(y_pred, y_train_tensor)
+    
+    # Backward pass
     loss.backward()
+    
+    # Aggiorniamo i pesi
     optimizer.step()
+    
+    if (epoch + 1) % 50 == 0:
+        print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item():.4f}")
 
-# Predizione su [-20, 20]
-x_full = np.linspace(-20, 20, 2000).reshape(-1, 1)
-x_full_tensor = torch.tensor(x_full, dtype=torch.float32)
-y_pred_full = model(x_full_tensor).detach().numpy()
+# Test del modello
+model.eval()
+with torch.no_grad():
+    y_test_pred = model(x_test_tensor)
 
-# Grafico
+# Visualizzazione dei risultati
 plt.figure(figsize=(10, 6))
-plt.scatter(x_train, y_train, label="Dati di Addestramento", s=5)
-plt.plot(x_full, y_pred_full, label="Predizione del Modello (-20, 20)", color="red", linewidth=2)
+plt.plot(x_train, y_train, label="Train Data (Ground Truth)", color="blue")
+plt.plot(x_test, y_test, label="Test Data (Ground Truth)", color="green")
+plt.plot(x_test, y_test_pred.numpy(), label="Test Data (Prediction)", color="red", linestyle="dashed")
 plt.legend()
-plt.title("Predizione del modello: continuazione oltre il range di addestramento")
 plt.xlabel("x")
 plt.ylabel("y")
-plt.grid()
+plt.title("Non-linear Function Prediction with PyTorch")
 plt.show()
