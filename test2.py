@@ -5,9 +5,9 @@ from torch.utils.data import Dataset, DataLoader
 import csv
 import matplotlib.pyplot as plt
 
-# Dataset class with handling for invalid values
+# Dataset class with replacement of '-' with 0
 class TimeSeriesDataset(Dataset):
-    '''Custom Dataset for bivariate time-series regression (without pandas).'''
+    '''Custom Dataset for bivariate time-series regression (replace '-' with 0).'''
     def __init__(self, csv_file):
         self.times = []
         self.x = []
@@ -18,17 +18,14 @@ class TimeSeriesDataset(Dataset):
             next(reader)  # Skip the header
             for row in reader:
                 try:
-                    # Convert strings to floats, skip rows with invalid values
+                    # Convert strings to floats, replace '-' with 0
                     time = float(row[0])
-                    x = float(row[1]) if row[1] != '-' else None
-                    y = float(row[2]) if row[2] != '-' else None
+                    x = float(row[1]) if row[1] != '-' else 0.0
+                    y = float(row[2]) if row[2] != '-' else 0.0
                     
-                    if x is not None and y is not None:
-                        self.times.append(time)
-                        self.x.append(x)
-                        self.y.append(y)
-                    else:
-                        print(f"Skipping invalid row: {row}")
+                    self.times.append(time)
+                    self.x.append(x)
+                    self.y.append(y)
                 except ValueError:
                     print(f"Skipping invalid row: {row}")
 
@@ -129,4 +126,5 @@ def visualize_predictions_2_1(model, dataset):
     plt.show()
 
 visualize_predictions_2_1(net, dataset)
+
 
