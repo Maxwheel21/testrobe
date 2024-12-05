@@ -1,66 +1,56 @@
-import time
-import hmac
-import hashlib
-import requests
-import json
+import torch
+import matplotlib.pyplot as plt
 
-def generate_totp(secret, time_step=30, digits=10):
-    # Calculate the current time step
-    current_time = int(time.time())
-    time_counter = current_time // time_step
+# Generate data
+def generate_data():
+    data = torch.rand(1000, 2)
+    label = ((data[:, 0] + 0.3 * data[:, 1]) > 0.5).to(torch.int)
+    return data[:, 0], label
 
-    # Encode the time counter to a byte array
-    time_counter_bytes = time_counter.to_bytes(8, 'big')
+# Initialize data and parameters
+input, label = generate_data()
+inputs = torch.split(input, 32)
+labels = torch.split(label, 32)
 
-    # Create an HMAC-SHA-512 hash
-    hmac_hash = hmac.new(secret.encode(), time_counter_bytes, hashlib.sha512).digest()
+# Define the parameters to optimize
+b1 = torch.autograd.Variable(torch.tensor([0.01], dtype=torch.float32), requires_grad=True)
+b2 = torch.autograd.Variable(torch.tensor([0.01], dtype=torch.float32), requires_grad=True)
 
-    # Extract the dynamic binary code (DBC)
-    offset = hmac_hash[-1] & 0x0F
-    binary_code = ((hmac_hash[offset] & 0x7F) << 24 |
-                   (hmac_hash[offset + 1] & 0xFF) << 16 |
-                   (hmac_hash[offset + 2] & 0xFF) << 8 |
-                   (hmac_hash[offset + 3] & 0xFF))
+# Learning rate
+alpha = 0.1
 
-    # Calculate the TOTP value
-    totp = binary_code % (10 ** digits)
+# Training loop
+for epoch in range(15):
+    for x_batch, y_batch in zip(inputs, labels):
+        # Logistic regression model
+        p_x = 1 / (1 + torch.exp(-(b1 + b2 * x_batch)))
+        
+        # Negative log-likelihood loss
+        loss = -torch.sum(y_batch * torch.log(p_x) + (1 - y_batch) * torch.log(1 - p_x))
+        
+        # Backpropagation: Compute gradients
+        loss.backward()
+        
+        # Update parameters
+        with torch.no_grad():
+            b1 -= alpha * b1.grad
+            b2 -= alpha * b2.grad
+            
+            # Zero the gradients after updating
+            b1.grad.zero_()
+            b2.grad.zero_()
+    
+    # Print loss per epoch
+    print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
 
-    # Pad the TOTP with leading zeros if necessary
-    return str(totp).zfill(digits)
+# Plot the result
+x = torch.linspace(0, 1, 100)
+y_pred = 1 / (1 + torch.exp(-(b1.detach() + b2.detach() * x)))
 
-# User information
-email = "lordherobrine98@gmail.com"
-secret = email + "HENNGECHALLENGE003"
-github_url = "https://gist.github.com/Maxwheel21/eed9c2c10119244087810fdfc13fedee"
-language = "python"
-
-# Generate TOTP password
-password = generate_totp(secret)
-
-# Construct JSON payload
-payload = {
-    "github_url": github_url,
-    "contact_email": email,
-    "solution_language": language
-}
-
-# Encode JSON payload
-json_payload = json.dumps(payload)
-
-# Prepare HTTP headers
-headers = {
-    "Content-Type": "application/json"
-}
-
-# Prepare Basic Auth header
-auth = (email, password)
-
-# URL for the POST request
-url = "https://api.challenge.hennge.com/challenges/003"
-
-# Send POST request
-response = requests.post(url, headers=headers, data=json_payload, auth=auth)
-
-# Print response status and body
-print("Response Status Code:", response.status_code)
-print("Response Body:", response.text)
+plt.scatter(input, label, color="red", alpha=0.5, label="True Data")
+plt.plot(x, y_pred, color="blue", label="Learned Logistic Curve")
+plt.xlabel("x")
+plt.ylabel("Probability")
+plt.legend()
+plt.title("Logistic Regression Decision Boundary")
+plt.show()
