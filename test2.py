@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import csv
 import matplotlib.pyplot as plt
 
-# Dataset class without pandas
+# Dataset class with handling for invalid values
 class TimeSeriesDataset(Dataset):
     '''Custom Dataset for bivariate time-series regression (without pandas).'''
     def __init__(self, csv_file):
@@ -17,9 +17,20 @@ class TimeSeriesDataset(Dataset):
             reader = csv.reader(file)
             next(reader)  # Skip the header
             for row in reader:
-                self.times.append(float(row[0]))
-                self.x.append(float(row[1]))
-                self.y.append(float(row[2]))
+                try:
+                    # Convert strings to floats, skip rows with invalid values
+                    time = float(row[0])
+                    x = float(row[1]) if row[1] != '-' else None
+                    y = float(row[2]) if row[2] != '-' else None
+                    
+                    if x is not None and y is not None:
+                        self.times.append(time)
+                        self.x.append(x)
+                        self.y.append(y)
+                    else:
+                        print(f"Skipping invalid row: {row}")
+                except ValueError:
+                    print(f"Skipping invalid row: {row}")
 
     def __len__(self):
         return len(self.times)
